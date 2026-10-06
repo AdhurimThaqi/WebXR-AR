@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <meta name="description" content="The Aether Artifact – a WebXR augmented reality installation. Place an ancient glowing artifact in your room.">
+  <title>The Aether Artifact – WebXR AR</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- A-Frame (includes three.js and WebXR support). Pinned version = predictable behaviour. -->
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+
+  <!-- Small QR code library, only used by the "QR CODE" section. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+
+  <!-- Our code. Must load AFTER A-Frame and BEFORE <a-scene> is parsed,
+       because it registers the custom A-Frame components used in the scene. -->
+  <script src="app.js"></script>
+</head>
+<body>
+
+  <!-- =========================================================
+       1. LANDING SCREEN (normal web page, shown before AR)
+       ========================================================= -->
+  <main id="landing" class="landing">
+    <header class="brand">
+      <span class="brand-dot"></span> WebXR Installation
+    </header>
+
+    <section class="card landing-card">
+      <p class="eyebrow">Augmented Reality Experience</p>
+      <h1>The Aether Artifact</h1>
+      <p class="lead">
+        An ancient device with a living crystal core. Place it on your floor
+        or table, walk around it and wake it up.
+      </p>
+
+      <button id="enter-ar" class="btn btn-primary btn-large" disabled>
+        Checking AR support…
+      </button>
+
+      <p id="support-message" class="support-message" role="status" hidden></p>
+
+      <ol class="steps">
+        <li>Press <strong>Enter AR</strong> and allow camera access.</li>
+        <li>Point your phone at the floor and move it slowly.</li>
+        <li>When the ring appears, tap to place the artifact.</li>
+        <li>Tap the crystal to activate it.</li>
+      </ol>
+
+      <div class="landing-footer">
+        <button id="open-qr" class="btn btn-ghost">QR CODE</button>
+        <span class="hint-small">Tip: tap or click the crystal in the 3D preview.</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       2. AR OVERLAY (WebXR "DOM overlay")
+       This element is passed to the WebXR session as the overlay root,
+       so it stays visible on top of the camera image while in AR.
+       "a-no-style" tells A-Frame not to apply its default overlay CSS.
+       ========================================================= -->
+  <div id="ar-ui" class="ar-ui a-no-style">
+    <div class="ar-top">
+      <div id="ar-hint" class="pill">
+        <span class="scan-icon" aria-hidden="true"></span>
+        <span id="ar-hint-text">Starting AR…</span>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div class="ar-controls">
+      <button id="btn-reset" class="btn btn-glass" disabled>Reset</button>
+      <button id="btn-activate" class="btn btn-primary" disabled>Activate</button>
+      <button id="btn-exit" class="btn btn-glass">Exit</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       3. QR CODE SECTION (opened from the landing screen or via #qr)
+       ========================================================= -->
+  <section id="qr-section" class="qr-section" hidden aria-labelledby="qr-title">
+    <div class="card qr-card">
+      <button id="close-qr" class="btn-close no-print" aria-label="Close">&times;</button>
+
+      <h2 id="qr-title" class="no-print">QR CODE</h2>
+      <p class="no-print">
+        Once this project is deployed (GitHub Pages, Netlify or Vercel), its
+        <strong>HTTPS</strong> URL can be turned into a QR code. Scanning the
+        printed code opens this page directly on the phone. The code below is
+        generated live for the URL in the field.
+      </p>
+
+      <!-- Everything inside .qr-poster is what gets printed. -->
+      <div class="qr-poster">
+        <p class="poster-eyebrow">Augmented Reality</p>
+        <h3 class="poster-title">Scan to awaken the artifact</h3>
+        <div id="qr-image" class="qr-image"></div>
+        <p id="qr-url" class="qr-url"></p>
+        <p class="poster-note">Use Chrome on an ARCore-capable Android phone.</p>
+      </div>
+
+      <form id="qr-form" class="qr-form no-print">
+        <label for="qr-input">Deployment URL</label>
+        <input id="qr-input" type="url" required placeholder="https://your-name.github.io/WebXR-AR/">
+        <p id="qr-warning" class="qr-warning" hidden>
+          This URL does not start with https:// – WebXR AR will not start from it.
+          Generate the code from your deployed HTTPS address.
+        </p>
+        <div class="qr-actions">
+          <button type="submit" class="btn btn-glass">Update QR</button>
+          <button type="button" id="qr-download" class="btn btn-glass">Download SVG</button>
+          <button type="button" id="qr-print" class="btn btn-primary">Print</button>
+        </div>
+      </form>
+
+      <details class="no-print">
+        <summary>Generate it yourself</summary>
+        <p>Python (creates a print-ready PNG):</p>
+        <pre><code>pip install "qrcode[pil]"
+python qr-generator.py https://your-name.github.io/WebXR-AR/</code></pre>
+        <p>JavaScript (in a browser, using qrcode-generator):</p>
+        <pre><code>const qr = qrcode(0, 'H');   // auto size, high error correction
+qr.addData('https://your-name.github.io/WebXR-AR/');
+qr.make();
+document.body.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 4 });</code></pre>
+      </details>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       4. THE 3D SCENE (A-Frame)
+       - webxr: asks for immersive-ar with hit-test (required),
+         plus dom-overlay and anchors (optional, used when available).
+       - xr-mode-ui disabled: we use our own "Enter AR" button.
+       - background is only used for the landing preview; A-Frame
+         removes it automatically in AR so the camera image shows.
+       ========================================================= -->
+  <a-scene
+    webxr="requiredFeatures: hit-test; optionalFeatures: dom-overlay, anchors; overlayElement: #ar-ui; referenceSpaceType: local"
+    xr-mode-ui="enabled: false"
+    loading-screen="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    renderer="antialias: true; colorManagement: true; toneMapping: ACESFilmic; exposure: 1.05"
+    shadow="type: pcfsoft"
+    background="color: #070a12"
+    simple-environment
+    cursor="rayOrigin: mouse; fuse: false"
+    raycaster="objects: .clickable; far: 20">
+
+    <!-- Camera. Its position is only used for the landing preview;
+         in AR the phone's real position drives the camera. -->
+    <a-entity id="camera" camera position="0 1.6 0" rotation="-33 0 0"></a-entity>
+
+    <!-- Global soft lighting (works in preview and AR). -->
+    <a-entity light="type: ambient; color: #c4ccff; intensity: 0.25"></a-entity>
+    <a-entity light="type: hemisphere; color: #ffffff; groundColor: #3b3128; intensity: 0.6"></a-entity>
+
+    <!-- Placement reticle: positioned every frame from the WebXR hit test. -->
+    <a-entity id="reticle" visible="false">
+      <a-ring radius-inner="0.075" radius-outer="0.09" segments-theta="48" rotation="-90 0 0"
+              material="shader: flat; color: #7ff6ff; opacity: 0.95; transparent: true"></a-ring>
+      <a-ring radius-inner="0.1" radius-outer="0.104" segments-theta="48" rotation="-90 0 0"
+              material="shader: flat; color: #ffffff; opacity: 0.5; transparent: true"
+              animation="property: scale; from: 0.85 0.85 0.85; to: 1.15 1.15 1.15; dir: alternate; loop: true; dur: 900; easing: easeInOutSine"></a-ring>
+      <a-circle radius="0.012" rotation="-90 0 0" material="shader: flat; color: #ffffff"></a-circle>
+    </a-entity>
+
+    <!-- AR logic: hit testing, placement, anchors, crystal tapping. -->
+    <a-entity id="ar-manager"
+              ar-placement="target: #artifact; reticle: #reticle; hitProxy: #crystal-hit; camera: #camera"></a-entity>
+
+    <!-- =======================================================
+         THE ARTIFACT  (≈ 46 cm tall, units are metres, y = 0 is the floor)
+         #artifact        -> moved to the hit-test position in AR
+         #artifact-model  -> the visual model (spins slowly in preview)
+         ======================================================= -->
+    <a-entity id="artifact" position="0 1.15 -1.35" artifact-energy>
+
+      <!-- Key light with soft shadows. Lives inside the artifact so the
+           small shadow camera always covers it, wherever it is placed. -->
+      <a-entity id="light-target" position="0 0.15 0"></a-entity>
+      <a-entity position="0.45 1.1 0.55"
+                light="type: directional; color: #fff1dc; intensity: 2.2; castShadow: true;
+                       shadowMapWidth: 1024; shadowMapHeight: 1024; shadowBias: -0.0006;
+                       shadowCameraLeft: -0.45; shadowCameraRight: 0.45; shadowCameraTop: 0.45; shadowCameraBottom: -0.45;
+                       shadowCameraNear: 0.1; shadowCameraFar: 3; target: #light-target"></a-entity>
+
+      <a-entity id="artifact-model" preview-turntable="speed: 14"
+                animation__appear="property: scale; from: 0.001 0.001 0.001; to: 1 1 1; dur: 800; easing: easeOutBack; startEvents: appear">
+
+        <!-- Ground: invisible shadow receiver, soft contact shadow, energy glow. -->
+        <a-entity position="0 0.002 0" shadow-catcher="radius: 0.6; opacity: 0.4"></a-entity>
+        <a-entity position="0 0.003 0" soft-glow="flat: true; color: #000000; size: 0.5; opacity: 0.55; activeOpacity: 0.55; additive: false"></a-entity>
+        <a-entity position="0 0.004 0" soft-glow="flat: true; color: #2fdcff; size: 0.55; opacity: 0.18; activeSize: 0.9; activeOpacity: 0.55"></a-entity>
+
+        <!-- ---------- Stone pedestal ---------- -->
+        <!-- Base plinth (octagonal) -->
+        <a-cylinder radius="0.17" height="0.035" segments-radial="8" position="0 0.0175 0"
+                    material="color: #555b66; roughness: 0.92; metalness: 0.05" procedural-stone
+                    shadow="cast: true; receive: true"></a-cylinder>
+        <a-cylinder radius="0.173" height="0.006" segments-radial="8" position="0 0.036 0"
+                    material="color: #c9a35a; metalness: 0.85; roughness: 0.32" shadow="cast: true"></a-cylinder>
+
+        <!-- Second step with a glowing rune band -->
+        <a-cylinder radius="0.135" height="0.03" segments-radial="8" position="0 0.054 0"
+                    material="color: #626873; roughness: 0.9; metalness: 0.05" procedural-stone
+                    shadow="cast: true; receive: true"></a-cylinder>
+        <a-cylinder class="rune" radius="0.137" height="0.004" segments-radial="8" position="0 0.054 0"
+                    material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2; roughness: 0.4"></a-cylinder>
+
+        <!-- Tapered column -->
+        <a-cone radius-bottom="0.085" radius-top="0.065" height="0.15" segments-radial="8" position="0 0.144 0"
+                material="color: #6b717c; roughness: 0.88; metalness: 0.05" procedural-stone
+                shadow="cast: true; receive: true"></a-cone>
+        <a-cylinder radius="0.09" height="0.008" segments-radial="8" position="0 0.073 0"
+                    material="color: #b8914c; metalness: 0.85; roughness: 0.35" shadow="cast: true"></a-cylinder>
+        <a-cylinder radius="0.07" height="0.008" segments-radial="8" position="0 0.215 0"
+                    material="color: #b8914c; metalness: 0.85; roughness: 0.35" shadow="cast: true"></a-cylinder>
+
+        <!-- Vertical rune strips on four faces of the column -->
+        <a-entity rotation="0 22.5 0">
+          <a-box class="rune" width="0.007" height="0.11" depth="0.004" position="0 0.144 0.0695" rotation="-7.6 0 0"
+                 material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-box></a-entity>
+        <a-entity rotation="0 112.5 0">
+          <a-box class="rune" width="0.007" height="0.11" depth="0.004" position="0 0.144 0.0695" rotation="-7.6 0 0"
+                 material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-box></a-entity>
+        <a-entity rotation="0 202.5 0">
+          <a-box class="rune" width="0.007" height="0.11" depth="0.004" position="0 0.144 0.0695" rotation="-7.6 0 0"
+                 material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-box></a-entity>
+        <a-entity rotation="0 292.5 0">
+          <a-box class="rune" width="0.007" height="0.11" depth="0.004" position="0 0.144 0.0695" rotation="-7.6 0 0"
+                 material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-box></a-entity>
+
+        <!-- Capital and crystal cradle -->
+        <a-cylinder radius="0.105" height="0.022" segments-radial="8" position="0 0.23 0"
+                    material="color: #5c626d; roughness: 0.9; metalness: 0.05" procedural-stone
+                    shadow="cast: true; receive: true"></a-cylinder>
+        <a-cylinder radius="0.107" height="0.005" segments-radial="8" position="0 0.243 0"
+                    material="color: #c9a35a; metalness: 0.85; roughness: 0.3" shadow="cast: true"></a-cylinder>
+        <a-cone radius-bottom="0.045" radius-top="0.08" height="0.03" segments-radial="24" position="0 0.258 0"
+                material="color: #6e5a3a; metalness: 0.8; roughness: 0.38" shadow="cast: true; receive: true"></a-cone>
+        <a-circle class="rune" radius="0.07" segments="32" position="0 0.2735 0" rotation="-90 0 0"
+                  material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-circle>
+
+        <!-- Four golden prongs holding the crystal -->
+        <a-entity rotation="0 45 0">
+          <a-box width="0.008" height="0.09" depth="0.008" position="0 0.305 0.072" rotation="-15 0 0"
+                 material="color: #c9a35a; metalness: 0.85; roughness: 0.3" shadow="cast: true"></a-box>
+          <a-sphere class="rune" radius="0.007" position="0 0.349 0.06" material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-sphere>
+        </a-entity>
+        <a-entity rotation="0 135 0">
+          <a-box width="0.008" height="0.09" depth="0.008" position="0 0.305 0.072" rotation="-15 0 0"
+                 material="color: #c9a35a; metalness: 0.85; roughness: 0.3" shadow="cast: true"></a-box>
+          <a-sphere class="rune" radius="0.007" position="0 0.349 0.06" material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-sphere>
+        </a-entity>
+        <a-entity rotation="0 225 0">
+          <a-box width="0.008" height="0.09" depth="0.008" position="0 0.305 0.072" rotation="-15 0 0"
+                 material="color: #c9a35a; metalness: 0.85; roughness: 0.3" shadow="cast: true"></a-box>
+          <a-sphere class="rune" radius="0.007" position="0 0.349 0.06" material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-sphere>
+        </a-entity>
+        <a-entity rotation="0 315 0">
+          <a-box width="0.008" height="0.09" depth="0.008" position="0 0.305 0.072" rotation="-15 0 0"
+                 material="color: #c9a35a; metalness: 0.85; roughness: 0.3" shadow="cast: true"></a-box>
+          <a-sphere class="rune" radius="0.007" position="0 0.349 0.06" material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-sphere>
+        </a-entity>
+
+        <!-- ---------- Floating crystal with rings (bobs up and down) ---------- -->
+        <a-entity id="crystal-group" position="0 0.37 0"
+                  animation="property: position; from: 0 0.36 0; to: 0 0.38 0; dir: alternate; loop: true; dur: 2400; easing: easeInOutSine"
+                  animation__pop="property: scale; from: 1.3 1.3 1.3; to: 1 1 1; dur: 900; easing: easeOutElastic; startEvents: activate">
+
+          <!-- Faceted crystal (transparent) with a bright inner core -->
+          <a-octahedron id="crystal" radius="0.055" scale="1 1.65 1" spin="axis: y; speed: 25; boost: 5"
+                        material="color: #2ad4ff; emissive: #00b4e6; emissiveIntensity: 1.1; metalness: 0.1; roughness: 0.08; opacity: 0.85; transparent: true; flatShading: true"
+                        shadow="cast: true"></a-octahedron>
+          <a-icosahedron id="crystal-core" radius="0.022" spin="axis: y; speed: -60; boost: 3"
+                         material="color: #ffffff; emissive: #c9fbff; emissiveIntensity: 2.5; flatShading: true"></a-icosahedron>
+
+          <!-- Soft glow halo (camera-facing sprite) and a small coloured light -->
+          <a-entity soft-glow="color: #3fe8ff; size: 0.34; opacity: 0.5; activeSize: 0.7; activeOpacity: 0.95"></a-entity>
+          <a-entity id="crystal-light" light="type: point; color: #4ff0ff; intensity: 0.04; distance: 1.2; decay: 2"></a-entity>
+
+          <!-- Invisible, slightly bigger sphere: makes the crystal easy to tap -->
+          <a-sphere id="crystal-hit" class="clickable" radius="0.11"
+                    material="opacity: 0; transparent: true; depthWrite: false"></a-sphere>
+
+          <!-- Three gyroscope rings. Outer entity spins, inner torus is tilted. -->
+          <a-entity spin="axis: y; speed: 40; boost: 4">
+            <a-torus radius="0.1" radius-tubular="0.003" segments-tubular="96" segments-radial="12" rotation="75 0 0"
+                     material="color: #d7b46a; metalness: 0.9; roughness: 0.25" shadow="cast: true">
+              <a-octahedron class="rune" radius="0.009" position="0.1 0 0" material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-octahedron>
+              <a-octahedron class="rune" radius="0.009" position="-0.1 0 0" material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-octahedron>
+            </a-torus>
+          </a-entity>
+          <a-entity spin="axis: y; speed: -28; boost: 4">
+            <a-torus class="rune" radius="0.125" radius-tubular="0.0022" segments-tubular="96" segments-radial="10" rotation="105 0 20"
+                     material="color: #0b2a33; emissive: #22e4ff; emissiveIntensity: 1.2"></a-torus>
+          </a-entity>
+          <a-entity spin="axis: y; speed: 18; boost: 5">
+            <a-torus radius="0.15" radius-tubular="0.0025" segments-tubular="110" segments-radial="12" rotation="60 0 -15"
+                     material="color: #d7b46a; metalness: 0.9; roughness: 0.25" shadow="cast: true">
+              <a-sphere radius="0.008" position="0 0.15 0" material="color: #ffffff; emissive: #ffe7a8; emissiveIntensity: 1.5"></a-sphere>
+              <a-sphere radius="0.008" position="0.13 -0.075 0" material="color: #ffffff; emissive: #ffe7a8; emissiveIntensity: 1.5"></a-sphere>
+              <a-sphere radius="0.008" position="-0.13 -0.075 0" material="color: #ffffff; emissive: #ffe7a8; emissiveIntensity: 1.5"></a-sphere>
+            </a-torus>
+          </a-entity>
+        </a-entity>
+
+        <!-- ---------- Floating geometric fragments (orbit, bob, push outward when active) ---------- -->
+        <a-tetrahedron radius="0.024" orbit-fragment="radius: 0.2; height: 0.3; angle: 0; speed: 14"
+                       material="color: #1d2230; metalness: 0.5; roughness: 0.22; emissive: #0a5a73; emissiveIntensity: 0.6; flatShading: true" shadow="cast: true"></a-tetrahedron>
+        <a-octahedron radius="0.02" orbit-fragment="radius: 0.22; height: 0.4; angle: 52; speed: 14"
+                      material="color: #c9a35a; metalness: 0.9; roughness: 0.3; flatShading: true" shadow="cast: true"></a-octahedron>
+        <a-box width="0.026" height="0.026" depth="0.026" orbit-fragment="radius: 0.19; height: 0.34; angle: 103; speed: 14"
+               material="color: #1d2230; metalness: 0.5; roughness: 0.22; emissive: #0a5a73; emissiveIntensity: 0.6" shadow="cast: true"></a-box>
+        <a-dodecahedron radius="0.019" orbit-fragment="radius: 0.23; height: 0.27; angle: 154; speed: 14"
+                        material="color: #1d2230; metalness: 0.5; roughness: 0.22; emissive: #0a5a73; emissiveIntensity: 0.6; flatShading: true" shadow="cast: true"></a-dodecahedron>
+        <a-tetrahedron radius="0.018" orbit-fragment="radius: 0.2; height: 0.45; angle: 206; speed: 14"
+                       material="color: #c9a35a; metalness: 0.9; roughness: 0.3; flatShading: true" shadow="cast: true"></a-tetrahedron>
+        <a-icosahedron radius="0.017" orbit-fragment="radius: 0.215; height: 0.36; angle: 257; speed: 14"
+                       material="color: #1d2230; metalness: 0.5; roughness: 0.22; emissive: #0a5a73; emissiveIntensity: 0.6; flatShading: true" shadow="cast: true"></a-icosahedron>
+        <a-box width="0.03" height="0.012" depth="0.02" orbit-fragment="radius: 0.235; height: 0.31; angle: 308; speed: 14"
+               material="color: #c9a35a; metalness: 0.9; roughness: 0.3" shadow="cast: true"></a-box>
+
+        <!-- ---------- Rising energy particles ---------- -->
+        <a-entity energy-particles="count: 90; radius: 0.17; bottom: 0.05; top: 0.62; color: #8ff8ff; size: 0.011"></a-entity>
+
+        <!-- ---------- One-shot activation effects (triggered by the "activate" event) ---------- -->
+        <a-ring class="fx" radius-inner="0.9" radius-outer="1" segments-theta="64" position="0 0.01 0" rotation="-90 0 0" scale="0.001 0.001 0.001"
+                material="shader: flat; color: #7ff6ff; opacity: 0; transparent: true; side: double; blending: additive; depthWrite: false"
+                animation__grow="property: scale; from: 0.05 0.05 0.05; to: 0.6 0.6 0.6; dur: 1100; easing: easeOutCubic; startEvents: activate"
+                animation__fade="property: material.opacity; from: 0.9; to: 0; dur: 1100; easing: easeOutQuad; startEvents: activate"></a-ring>
+        <a-icosahedron class="fx" radius="0.1" detail="1" position="0 0.37 0" scale="0.001 0.001 0.001"
+                       material="shader: flat; color: #6ff0ff; wireframe: true; opacity: 0; transparent: true; blending: additive; depthWrite: false"
+                       animation__grow="property: scale; from: 0.3 0.3 0.3; to: 2.4 2.4 2.4; dur: 900; easing: easeOutCubic; startEvents: activate"
+                       animation__fade="property: material.opacity; from: 0.6; to: 0; dur: 900; easing: easeOutQuad; startEvents: activate"></a-icosahedron>
+        <a-cylinder class="fx" radius="0.007" height="0.8" open-ended="true" position="0 0.85 0" scale="1 0.001 1"
+                    material="shader: flat; color: #3fe8ff; opacity: 0; transparent: true; side: double; blending: additive; depthWrite: false"
+                    animation__grow="property: scale; from: 1 0.1 1; to: 1.4 1 1.4; dur: 700; easing: easeOutCubic; startEvents: activate"
+                    animation__fade="property: material.opacity; from: 0.6; to: 0; dur: 1200; easing: easeInQuad; startEvents: activate"></a-cylinder>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+</body>
+</html>
