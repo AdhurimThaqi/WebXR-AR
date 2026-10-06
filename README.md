@@ -7,6 +7,8 @@ into the real room. Tapping the crystal activates it: the glow gets stronger, th
 fragments drift outward, the rings spin faster, an energy burst fires and a
 synthesised sound plays.
 
+- Link site https://adhurimthaqi.github.io/WebXR-AR/
+
 Built with **HTML + CSS + JavaScript + A-Frame 1.7.1**. It uses real WebXR
 (`immersive-ar` + `hit-test`). There is no fake camera background, no backend, no build step.
 
