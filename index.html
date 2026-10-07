@@ -9,6 +9,12 @@
 
   <link rel="stylesheet" href="style.css">
 
+  <!-- iPhone/iPad: lets the USDZ exporter (loaded on demand by app.js)
+       reuse A-Frame's THREE. Must come before any module is loaded. -->
+  <script type="importmap">
+    { "imports": { "three": "./three-shim.js" } }
+  </script>
+
   <!-- A-Frame (includes three.js and WebXR support). Pinned version = predictable behaviour. -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
 
@@ -43,7 +49,7 @@
 
       <p id="support-message" class="support-message" role="status" hidden></p>
 
-      <ol class="steps">
+      <ol id="steps" class="steps">
         <li>Press <strong>Enter AR</strong> and allow camera access.</li>
         <li>Point your phone at the floor and move it slowly.</li>
         <li>When the ring appears, tap to place the artifact.</li>
@@ -101,7 +107,7 @@
         <h3 class="poster-title">Scan to awaken the artifact</h3>
         <div id="qr-image" class="qr-image"></div>
         <p id="qr-url" class="qr-url"></p>
-        <p class="poster-note">Use Chrome on an ARCore-capable Android phone.</p>
+        <p class="poster-note">Android: Chrome (ARCore) &middot; iPhone / iPad: Safari or Chrome</p>
       </div>
 
       <form id="qr-form" class="qr-form no-print">

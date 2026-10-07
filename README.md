@@ -24,7 +24,8 @@ printed QR → phone camera → HTTPS website → Enter AR → scan the floor �
 WebXR-AR/                 (repository root = the "webxr-ar" project folder)
 ├── index.html            Page layout: landing screen, AR overlay, QR section, 3D scene
 ├── style.css             Look of all 2D UI (landing, AR buttons, QR poster, print layout)
-├── app.js                All logic: A-Frame components, WebXR hit testing, sound, UI
+├── app.js                All logic: A-Frame components, WebXR hit testing, iOS Quick Look, sound, UI
+├── three-shim.js         Lets the USDZ exporter (iPhone AR) reuse A-Frame's three.js
 ├── qr-generator.py       Python script that creates a print-ready QR code PNG
 ├── README.md             This file
 └── assets/
@@ -111,9 +112,23 @@ index.html
 ([list of devices](https://developers.google.com/ar/devices)) with *Google Play Services for AR* installed.
 Samsung Internet also supports WebXR AR on many Samsung phones.
 
-**Not supported:** iPhone / iPad Safari. Apple does not expose `immersive-ar` in WebXR on iOS.
-Desktop browsers don't support it either. These devices still see the landing page, the 3D
-preview and the fallback message.
+**iPhone / iPad (Safari, Chrome, Google app, Firefox, Edge):** Apple does not expose
+`immersive-ar` in WebXR on iOS, and every iOS browser uses Apple's WebKit engine, so the
+WebXR session can't start there. Instead, the page uses **AR Quick Look**, Apple's built-in AR viewer:
+
+1. On iOS, `app.js` loads three.js's `USDZExporter` and exports `#artifact-model` in the browser
+   to a `.usdz` file. The exporter skips the tap helper, shadow catcher and glow/burst effects,
+   which Quick Look can't display.
+2. The button changes to **View in AR**. Tapping it opens the file through an `<a rel="ar">` link.
+3. Quick Look finds the floor, places the artifact at real size and lets the visitor move and
+   turn it.
+
+Limitation: Quick Look shows a **static** model. The idle animation, particles, sound and
+tap-to-activate effects stay Android-only. In-app browsers (Instagram, Facebook…) can't open
+Quick Look, so the page asks the visitor to open it in Safari. Quick Look needs iOS 12 or later.
+
+**Not supported:** desktop browsers. They still see the landing page, the 3D preview and the
+fallback message.
 
 **HTTPS:** browsers only expose WebXR on secure origins: `https://…` or `http://localhost`.
 GitHub Pages, Netlify and Vercel all serve HTTPS automatically.
@@ -238,7 +253,7 @@ Always **test the QR code with a phone before printing**. It must open the HTTPS
 - **Printer settings:** print at **100 % / "Actual size"**, not "fit to page", so it isn't blurred.
 - **Placement:** put it next to a clear, well-lit **floor or table area**. Hit testing needs a
   textured, non-reflective surface, so avoid glass, mirrors and plain white surfaces.
-- Add a short instruction next to it, e.g. *"Scan with your Android phone camera → Enter AR →
+- Add a short instruction next to it, e.g. *"Scan with your phone camera → Enter AR / View in AR →
   point at the floor"*. The built-in **Print** button already lays this out as a poster.
 
 ---
@@ -269,7 +284,8 @@ Always **test the QR code with a phone before printing**. It must open the HTTPS
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | "AR is not supported on this device/browser" on an Android phone | Not Chrome, ARCore not installed or the phone isn't ARCore-certified | Open in Chrome. Install/update **Google Play Services for AR** from the Play Store. Check the [device list](https://developers.google.com/ar/devices). |
-| Same message on iPhone | iOS Safari has no WebXR AR | Use an Android phone. iOS is not supported by WebXR `immersive-ar`. |
+| Same message on iPhone | Opened inside an in-app browser (Instagram, Facebook, a QR-scanner app…) that can't launch AR Quick Look | Open the page in Safari or Chrome. The normal iPhone camera app opens Safari. |
+| iPhone button stays on "Preparing AR…" or shows "Could not prepare the AR model" | The USDZ exporter is loaded from cdn.jsdelivr.net and couldn't be downloaded | Check the internet connection and reload. |
 | Fallback message says "WebXR only works on HTTPS pages" | Opened via `http://192.168…` | Use the deployed HTTPS URL, USB port forwarding to `localhost`, or an HTTPS tunnel. |
 | QR code opens the page inside another app (e.g. a scanner app's built-in browser) and AR fails | In-app browsers often have no WebXR | Use the phone's normal camera app, or choose "Open in Chrome". |
 | "Could not start AR" after pressing the button | Camera permission denied, or the session was refused | Allow the camera in Chrome site settings (lock icon → Permissions), then reload. |
