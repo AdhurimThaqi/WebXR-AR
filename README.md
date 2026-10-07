@@ -136,9 +136,16 @@ Why it is a separate page: the 8th Wall engine needs its own A-Frame build (8-Fr
 and that can't run on the same page as A-Frame 1.7.1. Android with ARCore keeps the native
 WebXR version, which tracks more precisely.
 
-Differences from the WebXR version: the scale is *responsive*. The camera starts at 1.5 units
-above the floor, so the artifact is roughly real size when the phone is held at chest height.
-There are no WebXR anchors, and the visitor has to allow camera **and** motion access.
+**Real-world size:** the page uses 8th Wall's **absolute scale** (`xrweb="scale: absolute"`), so
+1 unit = 1 metre, as in WebXR, and the artifact appears at its true ~46 cm. After the camera starts,
+the **coaching overlay** asks the visitor to move the phone slowly forward and back. During that
+time the engine combines the camera image with the motion sensors to measure the real distances
+and the phone's height above the floor. Placing is disabled until the overlay disappears
+(hint: *"Measuring the room…"*). The estimate is good, but not as exact as ARCore's depth
+tracking on Android.
+
+Other differences from the WebXR version: there are no WebXR anchors, and the visitor has to
+allow camera **and** motion access.
 
 **Licence:** the 8th Wall XR Engine (with SLAM) is free to use but closed source, under the
 [XR Engine License](https://github.com/8thwall/engine/blob/main/LICENSE). It must stay unmodified
@@ -304,7 +311,8 @@ Always **test the QR code with a phone before printing**. It must open the HTTPS
 | "AR is not supported on this device/browser" on an Android phone | Not Chrome, ARCore not installed or the phone isn't ARCore-certified | Open in Chrome. Install/update **Google Play Services for AR** from the Play Store. Check the [device list](https://developers.google.com/ar/devices). |
 | iPhone shows a camera / motion error page | Camera or motion access was denied | iOS Settings → Safari (or Chrome) → allow Camera and Motion & Orientation Access, then reload. |
 | iPhone page stays on the loading screen | The 8th Wall engine is loaded from cdn.jsdelivr.net and couldn't be downloaded | Check the internet connection and reload. |
-| The artifact looks too big or too small on iPhone | 8th Wall's responsive scale assumes the phone starts about 1.5 m above the floor | Start AR standing up, holding the phone at chest height, or change the camera `position` in `ar-8thwall.html`. |
+| iPhone stays on "Measuring the room…" | The scale estimate needs movement with depth and a textured floor | Move the phone slowly about 30 cm forward and back while pointing at a well-lit, textured floor. |
+| The artifact looks too big or too small on iPhone | The scale was measured badly (too little motion, plain or reflective floor) | Reload and do the forward-and-back motion again, more slowly. |
 | Fallback message says "WebXR only works on HTTPS pages" | Opened via `http://192.168…` | Use the deployed HTTPS URL, USB port forwarding to `localhost`, or an HTTPS tunnel. |
 | QR code opens the page inside another app (e.g. a scanner app's built-in browser) and AR fails | In-app browsers often have no WebXR | Use the phone's normal camera app, or choose "Open in Chrome". |
 | "Could not start AR" after pressing the button | Camera permission denied, or the session was refused | Allow the camera in Chrome site settings (lock icon → Permissions), then reload. |

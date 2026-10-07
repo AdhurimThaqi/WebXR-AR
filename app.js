@@ -815,6 +815,10 @@ const UI = {
         this.hint('Tap the crystal to activate it · walk around it', false);
         this.setPlacedControls(true);
         break;
+      case 'calibrating':
+        this.hint('Measuring the room – move your phone slowly forward and back', true);
+        this.setPlacedControls(false);
+        break;
       case 'no-hit-test':
         this.hint('Surface detection is not available on this device', false);
         break;

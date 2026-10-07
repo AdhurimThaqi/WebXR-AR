@@ -19,6 +19,10 @@
   <!-- XR Extras: loading screen, camera/motion permission prompts, error screens. -->
   <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1.0.0/dist/xrextras.js" crossorigin="anonymous"></script>
 
+  <!-- Coaching overlay (MIT): asks the visitor to move the phone forward and
+       back so the engine can measure real-world scale (scale: absolute). -->
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/coaching-overlay@1.0.0/dist/coaching-overlay.js" crossorigin="anonymous"></script>
+
   <!-- 8th Wall XR Engine with SLAM world tracking.
        Copyright © 2026 Niantic Spatial, Inc. All rights reserved.
        License: https://github.com/8thwall/engine/blob/main/LICENSE
@@ -53,13 +57,17 @@
   <!-- =========================================================
        THE 3D SCENE (8-Frame + 8th Wall)
        - xrweb: starts the camera and SLAM world tracking. The real
-         floor is the plane y = 0; the camera's start height sets the
-         scale (scale: responsive), so 1.5 ≈ a phone held standing.
+         floor is the plane y = 0. scale: absolute = 1 unit is 1 real
+         metre, like WebXR, so the artifact is its true ~46 cm. The
+         engine measures this while the coaching overlay is shown and
+         then sets the camera height itself (the 1.5 below is only
+         the starting value).
        - The artifact itself is not written here: ar-8thwall.js copies
          #artifact from index.html, so both AR modes show the same model.
        ========================================================= -->
   <a-scene
-    xrweb="allowedDevices: mobile-and-headsets; scale: responsive"
+    xrweb="allowedDevices: mobile-and-headsets; scale: absolute"
+    coaching-overlay="promptText: Move your phone slowly forward and back"
     xrextras-loading
     xrextras-runtime-error
     xr8-placement="target: #artifact; reticle: #reticle; hitProxy: #crystal-hit"

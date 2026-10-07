@@ -31,12 +31,27 @@ AFRAME.registerComponent('xr8-placement', {
     this.cameraPosition = new THREE.Vector3();
     this.ndc = new THREE.Vector2();
 
+    this.reticle = document.querySelector(this.data.reticle);   // in ar-8thwall.html, parsed before the scene inits
+
     this.onTap = this.onTap.bind(this);
     document.addEventListener('click', this.onTap);
 
     this.el.addEventListener('realityready', () => {
       this.tracking = true;
-      this.setState('searching');
+      if (!this.calibrating) this.setState('searching');
+    });
+
+    // scale: absolute – while the coaching overlay measures real-world
+    // scale, the floor height isn't known yet, so nothing can be placed.
+    this.calibrating = false;
+    this.el.addEventListener('coaching-overlay.show', () => {
+      this.calibrating = true;
+      this.reticle.object3D.visible = false;
+      this.setState('calibrating');
+    });
+    this.el.addEventListener('coaching-overlay.hide', () => {
+      this.calibrating = false;
+      this.setState(this.placed ? 'placed' : 'searching');
     });
 
     this.loadArtifact().catch((err) => {
@@ -62,7 +77,6 @@ AFRAME.registerComponent('xr8-placement', {
     if (!artifact.hasLoaded) await new Promise((r) => artifact.addEventListener('loaded', r, { once: true }));
 
     this.target = artifact;
-    this.reticle = document.querySelector(this.data.reticle);
     this.hitProxy = artifact.querySelector(this.data.hitProxy);
   },
 
@@ -87,7 +101,7 @@ AFRAME.registerComponent('xr8-placement', {
 
   // ---- Every frame: move the reticle until the artifact is placed ----
   tick() {
-    if (!this.tracking || !this.target || this.placed) return;
+    if (!this.tracking || this.calibrating || !this.target || this.placed) return;
     const hit = this.floorHit(0, 0);
     const reticle = this.reticle.object3D;
     if (hit) {
@@ -102,7 +116,7 @@ AFRAME.registerComponent('xr8-placement', {
 
   // ---- A tap on the camera view ----
   onTap(evt) {
-    if (!this.tracking || !this.target || evt.target !== this.el.canvas) return;
+    if (!this.tracking || this.calibrating || !this.target || evt.target !== this.el.canvas) return;
     Sound.unlock();
 
     if (!this.placed) {
