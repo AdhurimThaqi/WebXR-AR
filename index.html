@@ -9,12 +9,6 @@
 
   <link rel="stylesheet" href="style.css">
 
-  <!-- iPhone/iPad: lets the USDZ exporter (loaded on demand by app.js)
-       reuse A-Frame's THREE. Must come before any module is loaded. -->
-  <script type="importmap">
-    { "imports": { "three": "./three-shim.js" } }
-  </script>
-
   <!-- A-Frame (includes three.js and WebXR support). Pinned version = predictable behaviour. -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
 
@@ -50,7 +44,7 @@
       <p id="support-message" class="support-message" role="status" hidden></p>
 
       <ol id="steps" class="steps">
-        <li>Press <strong>Enter AR</strong> and allow camera access.</li>
+        <li>Press <strong>Enter AR</strong> and allow camera access (on iPhone also motion access).</li>
         <li>Point your phone at the floor and move it slowly.</li>
         <li>When the ring appears, tap to place the artifact.</li>
         <li>Tap the crystal to activate it.</li>
@@ -60,6 +54,12 @@
         <button id="open-qr" class="btn btn-ghost">QR CODE</button>
         <span class="hint-small">Tip: tap or click the crystal in the 3D preview.</span>
       </div>
+
+      <p class="credits">
+        iPhone AR uses the XR Engine by Niantic Spatial, Inc. &copy; 2026 Niantic Spatial, Inc.
+        All rights reserved. Provided "as is" without warranty under the
+        <a href="https://github.com/8thwall/engine/blob/main/LICENSE" target="_blank" rel="noopener">XR Engine License</a>.
+      </p>
     </section>
   </main>
 

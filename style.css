@@ -212,6 +212,10 @@ h1 {
 }
 .hint-small { font-size: 0.75rem; color: var(--muted); }
 
+/* Licence attribution for the 8th Wall XR Engine (iPhone AR). */
+.credits { margin: 0.9em 0 0; font-size: 0.66rem; line-height: 1.4; color: var(--muted); opacity: 0.75; }
+.credits a { color: inherit; }
+
 /* ---------------------------------------------------------------
    2. AR overlay (visible only during the AR session)
    --------------------------------------------------------------- */
@@ -404,10 +408,3 @@ pre {
   .qr-image { width: 9cm; }
   .poster-title { font-size: 20pt; }
 }
-
-/* iPhone notice: informational, not an error. */
-.support-message.info {
-  background: rgba(69, 230, 255, 0.08);
-  border-color: rgba(69, 230, 255, 0.3);
-}
-.support-message.info strong { color: var(--accent); }

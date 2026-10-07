@@ -799,6 +799,26 @@ const UI = {
 
   updateActivateButton() {
     document.getElementById('btn-activate').textContent = ArtifactState.active ? 'Deactivate' : 'Activate';
+  },
+
+  // Hint text + buttons for an "ar-state" message (used by both AR pages).
+  showState(state) {
+    switch (state) {
+      case 'searching':
+        this.hint('Point your phone at the floor and move it slowly', true);
+        this.setPlacedControls(false);
+        break;
+      case 'ready':
+        this.hint('Tap the screen to place the artifact', false);
+        break;
+      case 'placed':
+        this.hint('Tap the crystal to activate it · walk around it', false);
+        this.setPlacedControls(true);
+        break;
+      case 'no-hit-test':
+        this.hint('Surface detection is not available on this device', false);
+        break;
+    }
   }
 };
 
@@ -828,86 +848,24 @@ function toggleArtifact() {
 }
 
 /* ---------------------------------------------------------------------
-   iPhone / iPad: AR Quick Look
+   Fallback: 8th Wall (iPhone / iPad and phones without ARCore)
    No browser on iOS supports WebXR "immersive-ar" (Chrome, the Google
-   app, Firefox… on iOS all use Apple's WebKit engine). Instead the
-   artifact is exported in the browser to a USDZ file and opened in
-   Apple's built-in AR viewer, which does the floor detection and
-   placement itself. Quick Look shows a static model, so the tap-to-
-   activate effects stay Android-only.
+   app, Firefox… on iOS all use Apple's WebKit engine). These phones
+   open ar-8thwall.html instead, where the open-source 8th Wall engine
+   tracks the floor from the camera image (SLAM) and the same artifact,
+   effects and sound run on top of it.
    --------------------------------------------------------------------- */
-const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+const XR8_PAGE = 'ar-8thwall.html';
+
+const IS_MOBILE = /Android|iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPadOS reports "Mac"
 
-const USDZ_EXPORTER_URL = 'https://cdn.jsdelivr.net/npm/three@0.173.0/examples/jsm/exporters/USDZExporter.js';
-
-function canUseQuickLook() {
-  if (!IS_IOS) return false;
-  const a = document.createElement('a');
-  if (a.relList && a.relList.supports && a.relList.supports('ar')) return true;   // Safari
-  // Chrome, the Google app, Firefox and Edge on iOS report false here,
-  // but still hand rel="ar" links to Quick Look.
-  return /CriOS\/|GSA\/|FxiOS\/|EdgiOS\//.test(navigator.userAgent);
-}
-
-const QuickLook = {
-  link: null,
-
-  // Exports #artifact-model to a USDZ blob. Done ahead of time so the
-  // button click can open Quick Look straight away (inside the gesture).
-  async prepare(sceneEl) {
-    let USDZExporter;
-    try {
-      ({ USDZExporter } = await import(USDZ_EXPORTER_URL));           // import map -> A-Frame's THREE
-    } catch (err) {
-      ({ USDZExporter } = await import(USDZ_EXPORTER_URL + '/+esm'));  // older iOS without import maps
-    }
-
-    const model = sceneEl.querySelector('#artifact-model').object3D.clone(true);
-    model.position.set(0, 0, 0);
-    model.rotation.set(0, 0, 0);
-    model.scale.set(1, 1, 1);
-
-    // Keep only what Quick Look can show: drop the invisible tap sphere,
-    // the shadow catcher and the flat/additive glow and burst effects.
-    const drop = [];
-    model.traverse((o) => {
-      if (o.isMesh && (!o.material.isMeshStandardMaterial || o.material.opacity < 0.05)) drop.push(o);
-    });
-    drop.forEach((o) => o.parent.remove(o));
-
-    const scene = new THREE.Scene();
-    scene.add(model);
-    scene.updateMatrixWorld(true);
-
-    const data = await new USDZExporter().parseAsync(scene, { quickLookCompatible: true, maxTextureSize: 512 });
-    const url = URL.createObjectURL(new Blob([data], { type: 'model/vnd.usdz+zip' }));
-
-    // Quick Look only reacts to <a rel="ar"> links whose first child is an <img>.
-    this.link = document.createElement('a');
-    this.link.rel = 'ar';
-    this.link.href = url;
-    this.link.download = 'aether-artifact.usdz';
-    this.link.hidden = true;
-    this.link.appendChild(document.createElement('img'));
-    document.body.appendChild(this.link);
-  },
-
-  open() {
-    if (this.link) this.link.click();
-  }
-};
-
-// Decide how this device gets AR: WebXR (Android), Quick Look (iOS) or not at all.
+// Decide how this device gets AR: WebXR (Android + ARCore), 8th Wall (other phones) or not at all.
 async function checkARSupport() {
   const webxr = await checkWebXRSupport();
-  if (webxr.ok || !IS_IOS) return webxr;
-  if (canUseQuickLook()) return { ok: true, mode: 'quicklook' };
-  return {
-    ok: false,
-    reason: UNSUPPORTED_TEXT,
-    detail: 'This in-app browser cannot open AR. Open the menu and choose "Open in Safari" (or Chrome).'
-  };
+  if (webxr.ok || !IS_MOBILE) return webxr;
+  if (!window.isSecureContext) return webxr;          // the camera also needs HTTPS
+  return { ok: true, mode: '8thwall' };
 }
 
 // Check whether this browser can run WebXR immersive-ar at all.
@@ -929,6 +887,7 @@ async function checkWebXRSupport() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (!document.getElementById('landing')) return;   // ar-8thwall.html has its own page logic
   const sceneEl = document.querySelector('a-scene');
   const enterBtn = document.getElementById('enter-ar');
   const supportMsg = document.getElementById('support-message');
@@ -948,9 +907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ---- 4.1 Support check -> Enter AR button state ----
   const support = await checkARSupport();
-  if (support.mode === 'quicklook') {
-    setupQuickLook(sceneEl, enterBtn, supportMsg);
-  } else if (support.ok) {
+  if (support.ok) {
     enterBtn.disabled = false;
     enterBtn.textContent = 'Enter AR';
   } else {
@@ -961,8 +918,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ---- 4.2 Enter AR (must happen inside a user gesture) ----
   enterBtn.addEventListener('click', async () => {
-    if (support.mode === 'quicklook') {
-      QuickLook.open();
+    if (support.mode === '8thwall') {
+      location.href = XR8_PAGE;
       return;
     }
     Sound.unlock();                       // allow audio from now on
@@ -996,24 +953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Messages from the ar-placement component
-  sceneEl.addEventListener('ar-state', (evt) => {
-    switch (evt.detail.state) {
-      case 'searching':
-        UI.hint('Point your phone at the floor and move it slowly', true);
-        UI.setPlacedControls(false);
-        break;
-      case 'ready':
-        UI.hint('Tap the screen to place the artifact', false);
-        break;
-      case 'placed':
-        UI.hint('Tap the crystal to activate it · walk around it', false);
-        UI.setPlacedControls(true);
-        break;
-      case 'no-hit-test':
-        UI.hint('Surface detection is not available on this device', false);
-        break;
-    }
-  });
+  sceneEl.addEventListener('ar-state', (evt) => UI.showState(evt.detail.state));
 
   // ---- 4.4 AR buttons ----
   document.getElementById('btn-reset').addEventListener('click', () => {
@@ -1036,58 +976,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ---- 4.6 QR code section ----
   initQRSection();
 });
-
-
-// iPhone / iPad: export the model once the scene has rendered (so the
-// stone textures exist), then turn the button into "View in AR".
-function setupQuickLook(sceneEl, enterBtn, supportMsg) {
-  enterBtn.disabled = true;
-  enterBtn.textContent = 'Preparing AR…';
-
-  const steps = document.getElementById('steps');
-  steps.innerHTML = '';
-  [
-    'Press <strong>View in AR</strong>. Apple\'s AR viewer opens.',
-    'Point your phone at the floor and move it slowly.',
-    'The artifact snaps onto the floor. Drag to move it, twist with two fingers to turn it.',
-    'Walk around it. Tap <strong>Object</strong> at the top to see it without the camera.'
-  ].forEach((html) => {
-    const li = document.createElement('li');
-    li.innerHTML = html;
-    steps.appendChild(li);
-  });
-
-  const message = (text, detail, isError) => {
-    supportMsg.hidden = false;
-    supportMsg.classList.toggle('info', !isError);
-    supportMsg.innerHTML = '';
-    const strong = document.createElement('strong');
-    strong.textContent = text;
-    const small = document.createElement('span');
-    small.textContent = detail;
-    supportMsg.append(strong, small);
-  };
-
-  const rendered = new Promise((resolve) => {
-    const afterTwoFrames = () => requestAnimationFrame(() => requestAnimationFrame(resolve));
-    if (sceneEl.renderStarted) afterTwoFrames();
-    else sceneEl.addEventListener('renderstart', afterTwoFrames, { once: true });
-  });
-
-  rendered
-    .then(() => QuickLook.prepare(sceneEl))
-    .then(() => {
-      enterBtn.disabled = false;
-      enterBtn.textContent = 'View in AR';
-      message('iPhone / iPad detected',
-        'The artifact opens in Apple AR Quick Look. Tapping the crystal to activate it only works on Android.');
-    })
-    .catch((err) => {
-      console.error('USDZ export failed:', err);
-      enterBtn.textContent = 'AR unavailable';
-      message('Could not prepare the AR model.', 'Check your internet connection and reload the page. ' + err.message, true);
-    });
-}
 
 
 /* ---------------------------------------------------------------------

@@ -24,8 +24,12 @@ printed QR → phone camera → HTTPS website → Enter AR → scan the floor �
 WebXR-AR/                 (repository root = the "webxr-ar" project folder)
 ├── index.html            Page layout: landing screen, AR overlay, QR section, 3D scene
 ├── style.css             Look of all 2D UI (landing, AR buttons, QR poster, print layout)
-├── app.js                All logic: A-Frame components, WebXR hit testing, iOS Quick Look, sound, UI
-├── three-shim.js         Lets the USDZ exporter (iPhone AR) reuse A-Frame's three.js
+├── app.js                All logic: A-Frame components, WebXR hit testing, sound, UI
+├── ar-8thwall.html       AR page for iPhone / iPad (and Android without ARCore), using 8th Wall
+├── ar-8thwall.js         Tap-to-place + crystal tapping on top of 8th Wall's world tracking
+├── external/
+│   ├── 8frame-1.5.0.min.js   8th Wall's build of A-Frame 1.5.0 (needed by the 8th Wall engine)
+│   └── 8frame-LICENSE        Its MIT licence
 ├── qr-generator.py       Python script that creates a print-ready QR code PNG
 ├── README.md             This file
 └── assets/
@@ -114,18 +118,32 @@ Samsung Internet also supports WebXR AR on many Samsung phones.
 
 **iPhone / iPad (Safari, Chrome, Google app, Firefox, Edge):** Apple does not expose
 `immersive-ar` in WebXR on iOS, and every iOS browser uses Apple's WebKit engine, so the
-WebXR session can't start there. Instead, the page uses **AR Quick Look**, Apple's built-in AR viewer:
+WebXR session can't start there. These phones (and Android phones without ARCore) use the
+open-source **[8th Wall](https://8thwall.org/)** engine instead:
 
-1. On iOS, `app.js` loads three.js's `USDZExporter` and exports `#artifact-model` in the browser
-   to a `.usdz` file. The exporter skips the tap helper, shadow catcher and glow/burst effects,
-   which Quick Look can't display.
-2. The button changes to **View in AR**. Tapping it opens the file through an `<a rel="ar">` link.
-3. Quick Look finds the floor, places the artifact at real size and lets the visitor move and
-   turn it.
+1. `index.html` checks for WebXR. On a phone without `immersive-ar`, **Enter AR** opens
+   `ar-8thwall.html`.
+2. That page loads **8-Frame** (8th Wall's A-Frame 1.5.0 build, in `external/`), XR Extras and
+   the **8th Wall XR Engine** with SLAM world tracking from `cdn.jsdelivr.net`. The engine reads
+   the camera and the motion sensors, then moves the 3D camera to match the phone. The real floor
+   is the plane `y = 0`.
+3. `ar-8thwall.js` copies `#artifact` from `index.html` into this scene, so both AR modes show
+   the same model. It also reuses every component in `app.js` (energy, particles, glow, sound).
+4. The `xr8-placement` component puts the reticle where a ray from the screen centre meets the
+   floor. A tap places the artifact there, and a tap on the crystal activates it, as on Android.
 
-Limitation: Quick Look shows a **static** model. The idle animation, particles, sound and
-tap-to-activate effects stay Android-only. In-app browsers (Instagram, Facebook…) can't open
-Quick Look, so the page asks the visitor to open it in Safari. Quick Look needs iOS 12 or later.
+Why it is a separate page: the 8th Wall engine needs its own A-Frame build (8-Frame 1.5.0),
+and that can't run on the same page as A-Frame 1.7.1. Android with ARCore keeps the native
+WebXR version, which tracks more precisely.
+
+Differences from the WebXR version: the scale is *responsive*. The camera starts at 1.5 units
+above the floor, so the artifact is roughly real size when the phone is held at chest height.
+There are no WebXR anchors, and the visitor has to allow camera **and** motion access.
+
+**Licence:** the 8th Wall XR Engine (with SLAM) is free to use but closed source, under the
+[XR Engine License](https://github.com/8thwall/engine/blob/main/LICENSE). It must stay unmodified
+(that's why it's loaded straight from the CDN) and needs the attribution that is shown at the
+bottom of the landing card. 8-Frame and XR Extras are MIT-licensed.
 
 **Not supported:** desktop browsers. They still see the landing page, the 3D preview and the
 fallback message.
@@ -284,8 +302,9 @@ Always **test the QR code with a phone before printing**. It must open the HTTPS
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | "AR is not supported on this device/browser" on an Android phone | Not Chrome, ARCore not installed or the phone isn't ARCore-certified | Open in Chrome. Install/update **Google Play Services for AR** from the Play Store. Check the [device list](https://developers.google.com/ar/devices). |
-| Same message on iPhone | Opened inside an in-app browser (Instagram, Facebook, a QR-scanner app…) that can't launch AR Quick Look | Open the page in Safari or Chrome. The normal iPhone camera app opens Safari. |
-| iPhone button stays on "Preparing AR…" or shows "Could not prepare the AR model" | The USDZ exporter is loaded from cdn.jsdelivr.net and couldn't be downloaded | Check the internet connection and reload. |
+| iPhone shows a camera / motion error page | Camera or motion access was denied | iOS Settings → Safari (or Chrome) → allow Camera and Motion & Orientation Access, then reload. |
+| iPhone page stays on the loading screen | The 8th Wall engine is loaded from cdn.jsdelivr.net and couldn't be downloaded | Check the internet connection and reload. |
+| The artifact looks too big or too small on iPhone | 8th Wall's responsive scale assumes the phone starts about 1.5 m above the floor | Start AR standing up, holding the phone at chest height, or change the camera `position` in `ar-8thwall.html`. |
 | Fallback message says "WebXR only works on HTTPS pages" | Opened via `http://192.168…` | Use the deployed HTTPS URL, USB port forwarding to `localhost`, or an HTTPS tunnel. |
 | QR code opens the page inside another app (e.g. a scanner app's built-in browser) and AR fails | In-app browsers often have no WebXR | Use the phone's normal camera app, or choose "Open in Chrome". |
 | "Could not start AR" after pressing the button | Camera permission denied, or the session was refused | Allow the camera in Chrome site settings (lock icon → Permissions), then reload. |

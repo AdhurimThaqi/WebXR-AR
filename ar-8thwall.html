@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <title>The Aether Artifact – AR (8th Wall)</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- This page is the AR mode for phones without WebXR AR (iPhone / iPad,
+       Android without ARCore). index.html sends them here.
+
+       8-Frame = 8th Wall's build of A-Frame 1.5.0 (MIT licence, see
+       external/8frame-LICENSE). The 8th Wall engine needs it, which is why
+       this is a separate page and not part of index.html (A-Frame 1.7.1). -->
+  <script src="external/8frame-1.5.0.min.js" crossorigin="anonymous"></script>
+
+  <!-- XR Extras: loading screen, camera/motion permission prompts, error screens. -->
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1.0.0/dist/xrextras.js" crossorigin="anonymous"></script>
+
+  <!-- 8th Wall XR Engine with SLAM world tracking.
+       Copyright © 2026 Niantic Spatial, Inc. All rights reserved.
+       License: https://github.com/8thwall/engine/blob/main/LICENSE
+       Loaded unmodified from the CDN, as the licence requires. -->
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1.0.0/dist/xr.js"
+          crossorigin="anonymous" async data-preload-chunks="slam"></script>
+
+  <!-- Shared artifact components (same file as index.html), then this page's logic. -->
+  <script src="app.js"></script>
+  <script src="ar-8thwall.js"></script>
+</head>
+<body class="in-ar">
+
+  <!-- Same AR overlay as in index.html (style.css shows it because of body.in-ar). -->
+  <div id="ar-ui" class="ar-ui">
+    <div class="ar-top">
+      <div id="ar-hint" class="pill">
+        <span class="scan-icon" aria-hidden="true"></span>
+        <span id="ar-hint-text">Starting camera…</span>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div class="ar-controls">
+      <button id="btn-reset" class="btn btn-glass" disabled>Reset</button>
+      <button id="btn-activate" class="btn btn-primary" disabled>Activate</button>
+      <button id="btn-exit" class="btn btn-glass">Exit</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       THE 3D SCENE (8-Frame + 8th Wall)
+       - xrweb: starts the camera and SLAM world tracking. The real
+         floor is the plane y = 0; the camera's start height sets the
+         scale (scale: responsive), so 1.5 ≈ a phone held standing.
+       - The artifact itself is not written here: ar-8thwall.js copies
+         #artifact from index.html, so both AR modes show the same model.
+       ========================================================= -->
+  <a-scene
+    xrweb="allowedDevices: mobile-and-headsets; scale: responsive"
+    xrextras-loading
+    xrextras-runtime-error
+    xr8-placement="target: #artifact; reticle: #reticle; hitProxy: #crystal-hit"
+    renderer="antialias: true; colorManagement: true"
+    shadow="type: pcfsoft"
+    simple-environment>
+
+    <a-camera id="camera" position="0 1.5 0"></a-camera>
+
+    <a-entity light="type: ambient; color: #c4ccff; intensity: 0.25"></a-entity>
+    <a-entity light="type: hemisphere; color: #ffffff; groundColor: #3b3128; intensity: 0.6"></a-entity>
+
+    <!-- Placement reticle: moved every frame to where the screen centre meets the floor. -->
+    <a-entity id="reticle" visible="false">
+      <a-ring radius-inner="0.075" radius-outer="0.09" segments-theta="48" rotation="-90 0 0"
+              material="shader: flat; color: #7ff6ff; opacity: 0.95; transparent: true"></a-ring>
+      <a-ring radius-inner="0.1" radius-outer="0.104" segments-theta="48" rotation="-90 0 0"
+              material="shader: flat; color: #ffffff; opacity: 0.5; transparent: true"
+              animation="property: scale; from: 0.85 0.85 0.85; to: 1.15 1.15 1.15; dir: alternate; loop: true; dur: 900; easing: easeInOutSine"></a-ring>
+      <a-circle radius="0.012" rotation="-90 0 0" material="shader: flat; color: #ffffff"></a-circle>
+    </a-entity>
+  </a-scene>
+
+</body>
+</html>
