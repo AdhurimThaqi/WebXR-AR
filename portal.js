@@ -842,7 +842,6 @@ AFRAME.registerComponent('teleporter-portal', {
     this.setState('placed');
     this.el.emit('portal-zone', { zone: 'earth', trips: this.trips });
     this.playSound('open');
-    Hum.start();
     setTimeout(() => this.say('Teleporter installed. Walk through the door!', 3000), 900);
   },
 
@@ -852,7 +851,6 @@ AFRAME.registerComponent('teleporter-portal', {
     this.zone = 'earth';
     this.el.emit('portal-zone', { zone: 'earth', trips: this.trips });
     this.setState('searching');
-    Hum.stop();
     this.playSound('reset');
   },
 
@@ -1009,9 +1007,6 @@ AFRAME.registerComponent('teleporter-portal', {
     else this.prevCam = null;
 
     this.anim.forEach((fn) => fn(t, s));
-
-    const dist = this.camLocal.distanceTo(this.tmp.set(0, 1.1, 0));
-    Hum.update(this.zone === 'inside' ? 0.5 : clamp01(1 - dist / 4), this.speed);
   }
 });
 
@@ -1019,44 +1014,6 @@ AFRAME.registerComponent('teleporter-portal', {
 /* =====================================================================
    4. SOUND (built on Sound from app.js)
    ===================================================================== */
-
-// Low teleporter hum that gets louder near the door.
-const Hum = {
-  nodes: null,
-  start() {
-    if (this.nodes || !Sound.ctx) return;
-    const ctx = Sound.ctx;
-    const gain = ctx.createGain();
-    gain.gain.value = 0;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 420;
-    const a = ctx.createOscillator();
-    const b = ctx.createOscillator();
-    a.type = 'sawtooth'; a.frequency.value = 55;
-    b.type = 'sine';     b.frequency.value = 110.6;
-    a.connect(filter); b.connect(filter);
-    filter.connect(gain).connect(Sound.master);
-    a.start(); b.start();
-    this.nodes = { gain, a, b, filter };
-  },
-  update(level, speed) {
-    if (!this.nodes) return;
-    const now = Sound.ctx.currentTime;
-    this.nodes.gain.gain.setTargetAtTime(0.012 + level * 0.06, now, 0.2);
-    this.nodes.a.frequency.setTargetAtTime(55 * speed, now, 0.3);
-    this.nodes.b.frequency.setTargetAtTime(110.6 * speed, now, 0.3);
-    this.nodes.filter.frequency.setTargetAtTime(420 + (speed - 1) * 300, now, 0.3);
-  },
-  stop() {
-    if (!this.nodes) return;
-    const now = Sound.ctx.currentTime;
-    this.nodes.gain.gain.setTargetAtTime(0, now, 0.1);
-    this.nodes.a.stop(now + 0.5);
-    this.nodes.b.stop(now + 0.5);
-    this.nodes = null;
-  }
-};
 
 AFRAME.components['teleporter-portal'].Component.prototype.playSound = function (name) {
   if (!Sound.ctx) return;           // audio not unlocked yet (no tap so far)
