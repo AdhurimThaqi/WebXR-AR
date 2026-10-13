@@ -27,6 +27,8 @@ WebXR-AR/                 (repository root = the "webxr-ar" project folder)
 ├── app.js                All logic: A-Frame components, WebXR hit testing, sound, UI
 ├── ar-8thwall.html       AR page for iPhone / iPad (and Android without ARCore), using 8th Wall
 ├── ar-8thwall.js         Tap-to-place + crystal tapping on top of 8th Wall's world tracking
+├── portal.html           Teleporter T-42: a walk-through AR portal (8th Wall, all phones)
+├── portal.js             The door, the hidden "Dimension 42" behind it, walk-through detection
 ├── external/
 │   ├── 8frame-1.5.0.min.js   8th Wall's build of A-Frame 1.5.0 (needed by the 8th Wall engine)
 │   └── 8frame-LICENSE        Its MIT licence
@@ -323,6 +325,30 @@ Always **test the QR code with a phone before printing**. It must open the HTTPS
 | Changes don't show after deploying | Browser / CDN cache | Hard-reload, or wait 1–2 minutes (GitHub Pages caches for up to 10 min). |
 | 404 on GitHub Pages | Pages not enabled, wrong branch/folder or case-sensitive path | Settings → Pages → `main` / `root`. Use the exact URL `…/WebXR-AR/`. |
 | Blank page locally when opening `index.html` by double-click | `file://` pages lack a secure context for XR | Always use a local server (`python -m http.server`). |
+
+### Bonus: Teleporter T-42 (walk-through portal)
+
+`portal.html` (linked from the landing card as **Try the Teleporter Portal**) uses the same
+8th Wall stack. It works on iPhone and Android:
+
+1. Move the phone forward and back while the coaching overlay measures the room.
+2. A ghost outline of a door follows the floor. Tap to install the life-size (2.1 m) teleporter.
+3. Through the door you see **Dimension 42**: a synthwave sunset, floating islands, orbiting
+   donuts, a UFO and a giant rubber duck (the *Supreme Leader*) that turns to watch you.
+4. **Walk through the door.** A teleport flash plays, the location badge switches to
+   *Dimension 42*, and you're standing inside the world. Walk back through the door to return.
+5. Tap the duck (it squeaks), the UFO, or the frame. **Overclock** speeds everything up,
+   **Move** lets you place the door somewhere else.
+
+How the illusion works: an invisible **hider box** (writes depth but no colour) surrounds the
+dimension. Its front wall has a door-shaped hole, so the world is only visible through the door.
+Inside, the sky box surrounds you, and looking back through the door shows the real room.
+Going round the back of the door (instead of through it) hides the world, so nobody can cheat.
+
+**Desktop preview:** open `portal.html?preview` through a local server to check the scene
+without AR (drag to look, WASD to walk). `&pos=0 1.6 -2&rot=0 180 0` sets a fixed camera.
+
+You need a free space of about 2 × 3 m: the door is real size, and you walk through it.
 
 ---
 

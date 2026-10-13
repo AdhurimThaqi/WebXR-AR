@@ -385,6 +385,101 @@ pre {
 @keyframes rise  { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 @keyframes fade  { from { opacity: 0; } to { opacity: 1; } }
 
+/* ---------------------------------------------------------------
+   4. Teleporter portal page (portal.html)
+   --------------------------------------------------------------- */
+.btn-portal {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+  text-decoration: none;
+  border-color: rgba(176, 107, 255, 0.45);
+  box-shadow: 0 0 24px rgba(176, 107, 255, 0.18) inset;
+}
+.btn-portal small { display: block; margin-top: 0.2em; font-weight: 500; font-size: 0.75rem; color: var(--muted); }
+
+.portal-top { flex-direction: column; align-items: center; gap: 8px; }
+
+.location-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.4em 0.9em;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+.location-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7cff8a;
+  box-shadow: 0 0 8px #7cff8a;
+}
+.location-badge.elsewhere { color: #ffb3e6; border-color: rgba(255, 111, 216, 0.5); box-shadow: 0 0 20px rgba(255, 111, 216, 0.3); }
+.location-badge.elsewhere .location-dot { background: #ff6fd8; box-shadow: 0 0 8px #ff6fd8; animation: pulse 1.2s ease-in-out infinite; }
+
+.portal-page .toast { max-width: min(92vw, 420px); text-align: center; line-height: 1.35; }
+
+/* Flash while walking between dimensions */
+.teleport-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 2px, transparent 2px 5px),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95) 0%, rgba(127, 246, 255, 0.75) 22%, rgba(176, 107, 255, 0.55) 48%, rgba(20, 8, 50, 0) 78%);
+}
+.teleport-fx.exiting {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 2px, transparent 2px 5px),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95) 0%, rgba(124, 255, 138, 0.6) 25%, rgba(69, 230, 255, 0.45) 50%, rgba(5, 7, 13, 0) 78%);
+}
+.teleport-fx.play { animation: teleport-flash 2.2s ease-out both; }
+.teleport-fx-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0 24px;
+  text-align: center;
+  color: #0a0620;
+}
+.teleport-fx-text strong {
+  font-size: clamp(1.6rem, 8vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.teleport-fx-text span { font-size: 1rem; font-weight: 600; opacity: 0.8; }
+.teleport-fx.play .teleport-fx-text { animation: teleport-text 2.2s ease-out both; }
+
+@keyframes teleport-flash {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+@keyframes teleport-text {
+  0%   { transform: scale(1.6); filter: blur(6px); }
+  15%  { transform: scale(1); filter: blur(0); }
+  20%  { transform: translateX(-3px); }
+  23%  { transform: translateX(3px); }
+  26%  { transform: none; }
+  100% { transform: scale(0.96); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

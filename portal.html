@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <title>Teleporter T-42 – AR Portal (8th Wall)</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Same 8th Wall stack as ar-8thwall.html: 8-Frame (A-Frame 1.5.0 build),
+       XR Extras, the coaching overlay and the XR Engine with SLAM. -->
+  <script src="external/8frame-1.5.0.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1.0.0/dist/xrextras.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/coaching-overlay@1.0.0/dist/coaching-overlay.js" crossorigin="anonymous"></script>
+
+  <!-- 8th Wall XR Engine with SLAM world tracking.
+       Copyright © 2026 Niantic Spatial, Inc. All rights reserved.
+       License: https://github.com/8thwall/engine/blob/main/LICENSE
+       Loaded unmodified from the CDN, as the licence requires. -->
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1.0.0/dist/xr.js"
+          crossorigin="anonymous" async data-preload-chunks="slam"></script>
+
+  <!-- app.js: shared Sound, UI helpers, glow texture and simple-environment.
+       portal.js: the teleporter, the dimension behind it and the page logic. -->
+  <script src="app.js"></script>
+  <script src="portal.js"></script>
+</head>
+<body class="in-ar portal-page">
+
+  <div id="ar-ui" class="ar-ui">
+    <div class="ar-top portal-top">
+      <div id="ar-hint" class="pill">
+        <span class="scan-icon" aria-hidden="true"></span>
+        <span id="ar-hint-text">Starting camera…</span>
+      </div>
+      <div id="location" class="location-badge">
+        <span class="location-dot" aria-hidden="true"></span>
+        <span id="location-text">Location: Earth</span>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div class="ar-controls">
+      <button id="btn-reset" class="btn btn-glass" disabled>Move</button>
+      <button id="btn-overclock" class="btn btn-primary" disabled>Overclock</button>
+      <button id="btn-exit" class="btn btn-glass">Exit</button>
+    </div>
+  </div>
+
+  <!-- Full-screen flash played while walking through the door. -->
+  <div id="teleport-fx" class="teleport-fx" aria-hidden="true">
+    <div class="teleport-fx-text">
+      <strong id="teleport-fx-title">Teleporting</strong>
+      <span id="teleport-fx-sub"></span>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       THE 3D SCENE (8-Frame + 8th Wall)
+       - xrweb + scale: absolute: 1 unit = 1 real metre, so the
+         door is a real 2.1 m doorway you can walk through.
+       - teleporter-portal (portal.js) builds the door, the hidden
+         dimension behind it and handles placement and taps.
+       - Open portal.html?preview on a desktop to look at the scene
+         without AR (WASD + mouse drag to walk through the door).
+       ========================================================= -->
+  <a-scene
+    xrweb="allowedDevices: mobile-and-headsets; scale: absolute"
+    coaching-overlay="promptText: Move your phone slowly forward and back"
+    xrextras-loading
+    xrextras-runtime-error
+    teleporter-portal="reticle: #reticle"
+    renderer="antialias: true; colorManagement: true"
+    simple-environment>
+
+    <!-- near/far kept tight for depth precision: the portal hider relies on it. -->
+    <a-camera id="camera" position="0 1.5 0" near="0.03" far="80"></a-camera>
+
+    <a-entity light="type: ambient; color: #c4ccff; intensity: 0.35"></a-entity>
+    <a-entity light="type: hemisphere; color: #ffffff; groundColor: #3b3128; intensity: 0.7"></a-entity>
+
+    <!-- Placement reticle. portal.js adds a ghost outline of the door to it. -->
+    <a-entity id="reticle" visible="false">
+      <a-ring radius-inner="0.42" radius-outer="0.45" segments-theta="64" rotation="-90 0 0"
+              material="shader: flat; color: #7ff6ff; opacity: 0.9; transparent: true"></a-ring>
+      <a-ring radius-inner="0.48" radius-outer="0.49" segments-theta="64" rotation="-90 0 0"
+              material="shader: flat; color: #ffffff; opacity: 0.5; transparent: true"
+              animation="property: scale; from: 0.9 0.9 0.9; to: 1.08 1.08 1.08; dir: alternate; loop: true; dur: 900; easing: easeInOutSine"></a-ring>
+      <a-circle radius="0.02" rotation="-90 0 0" material="shader: flat; color: #ffffff"></a-circle>
+    </a-entity>
+  </a-scene>
+
+</body>
+</html>
